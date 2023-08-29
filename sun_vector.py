@@ -25,8 +25,9 @@ def get_solar_position(date, latitude, longitude):
     solar_position = pvlib.solarposition.get_solarposition(
         times, latitude, longitude#, tz=tz
     )
+    solar_position["time"] = times
     
     # Filter times between sunrise and sunset (elevation >= 0)
     solar_position = solar_position[solar_position['elevation'] >= 0]
-    
-    return solar_position[['azimuth', 'elevation']]
+
+    return solar_position[['azimuth', 'elevation', "time"]]

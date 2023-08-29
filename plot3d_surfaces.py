@@ -2,35 +2,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sun_vector import get_solar_position
 from scipy.optimize import minimize
-from helioc.math_functions import rotation_matrix_3d, to_180_form, get_normal_vector
-
-def get_degrees(normal_vector):
-    normal_vector = normal_vector / np.linalg.norm(normal_vector)
-    theta_rad = -np.arcsin(normal_vector[0])
-    phi_rad = -np.arctan2(normal_vector[2], normal_vector[1]) - np.pi
-
-    # is theta and phi degrees or radians?
-    return to_180_form(np.degrees(theta_rad)), to_180_form(np.degrees(phi_rad))
-
-
-def closest_point_distance(point, midpoint, direction):
-    # Convert all inputs to numpy arrays for easier calculations
-    P = np.array(point)
-    A = np.array(midpoint)
-    Dir = np.array(direction)
-
-    # Calculate the closest point on the line to P
-    t = np.dot(P - A, Dir) / np.dot(Dir, Dir)
-    closest_point = A + t * Dir
-
-    # Calculate the distance between P and the closest point on the line
-    distance = np.linalg.norm(P - closest_point)
-
-    return distance
-
-
-def euclidean_vector_distance(vector1, vector2):
-    return np.linalg.norm(vector1 - vector2)
+from helioc.math_functions import (
+    rotation_matrix_3d,
+    to_180_form,
+    get_normal_vector,
+    get_degrees,
+    closest_point_distance,
+    euclidean_vector_distance, 
+    calculate_sun_position
+)
 
 
 def reflect_ray(ray_direction, normal):
@@ -101,7 +81,6 @@ def plot_point(ax, midpoint, point, **kwargs):
 
 def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
     sunray_point = get_sunray(degrees_azimuth, degrees_elevation)
-    # reflected_point = reflect_ray(sunray_point, np.array([0, 1, 0]))
 
     length = 15
     ax.quiver(
@@ -115,17 +94,6 @@ def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
         arrow_length_ratio=0,
         length=length,
     )
-    # ax.quiver(
-    #    midpoint[0],
-    #    midpoint[1],
-    #    midpoint[2],
-    #    reflected_point[0],
-    #    reflected_point[1],
-    #    reflected_point[2],
-    #    color="b",
-    #    arrow_length_ratio=0,
-    #    length=length,
-    # )
 
 
 def plot_surface(ax, midpoint, degrees_from_north, degrees_elevation, r=0.5):
@@ -155,8 +123,6 @@ def plot_surface(ax, midpoint, degrees_from_north, degrees_elevation, r=0.5):
         x, y, z, alpha=0.5, facecolors="r", rstride=100, cstride=100, linewidth=0
     )
 
-    # Plot normal vector (15 units long)
-    # normal_vector = R @ np.array([0, -1, 0])  # Rotate the normal vector
     normal_vector = get_normal_vector(degrees_from_north, degrees_elevation)
 
     ax.quiver(
@@ -207,11 +173,24 @@ if __name__ == "__main__":
     #    ax, midpoint=(-10, 0, 2.7), degrees_from_north=0, degrees_elevation=10
     # )  # Surface with red normal
 
-    vector_dest = [9.5, -13, -2.2]
+    vector_dest = np.array([9.5, -13, -2.2])
 
     df = get_solar_position("2023-08-01", -33.8352, 18.6510)
     df = df.iloc[:: int(len(df) / 20)]
     for i, row in df.iterrows():
+        time = row["time"]
+        day, month, year, hour, minute, second = (
+            time.day,
+            time.month,
+            time.year,
+            time.hour,
+            time.minute,
+            time.second,
+        )
+
+        az, el = calculate_sun_position(day, month, year, hour, minute, second, -33.8352, 18.6510)
+        print(to_180_form(180) - to_180_form(row["azimuth"]), ";  ", to_180_form(el) -  to_180_form(row["elevation"]))
+
         start_degrees_from_north = 0
         start_degrees_elevation = 0
 

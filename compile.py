@@ -15,17 +15,17 @@ def extract_functions(c_code):
     return re.findall(function_pattern, c_code)
 
 def extract_arg_type(arg_str):
-    regex = r"(\w+)\s+(\w+)((\[\s*\d+\s*\]\s*)*)"
+    regex = r"(\w+)\s*(\*?)\s*(\w+)((\[\s*\d+\s*\]\s*)*)"
     match = re.match(regex, arg_str)
 
-    arg_type, arg_name, all_brackets = match.groups()[:3]
+    arg_type, pointer, arg_name, all_brackets = match.groups()[:4]
 
     if all_brackets:
         dims = tuple(int(x) for x in re.findall(r"\[(\d+)\]", all_brackets))
     else:
         dims = ()
 
-    return arg_type, arg_name, dims
+    return arg_type, bool(pointer), arg_name, dims
 
 
 def generate_files(c_file):
@@ -67,7 +67,9 @@ _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
     type_map = {
         "double": "_np.float64",
         "float": "_np.float32",
-        "int": "_np.int32",
+        #"int": "_np.int32",
+        "int": "_np.intc",  # Platform-dependent
+        "long": "_np.int_",  # Platform-dependent
         "char": "_np.int8",
         "void": "None",
     }
@@ -82,7 +84,11 @@ _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
         
         args_py = []
         for arg in args_c:
-            arg_type, arg_name, dims = extract_arg_type(arg)
+            arg_type, pointer, arg_name, dims = extract_arg_type(arg)
+            
+            if pointer:
+                dims = (1,)
+
             args_py.append(
                 SimpleNamespace(
                 name = arg_name,
@@ -90,18 +96,22 @@ _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
                 type = arg_type,
                 ctype = typewrap(arg_type, dims),
                 npobj = f"_np.zeros({tuple((int(i) for i in dims))}, dtype={type_map[arg_type]})",
+                pointer = pointer,
                 dims = tuple((int(i) for i in dims)),
                 returns = arg_name.startswith("return_")
             ))
 
         python_wrapper_code += f"# Declare argument types for {func_name}\n"
         python_wrapper_code += f"_lib.{func_name}.argtypes = [{', '.join([arg.ctype for arg in args_py])}]\n"
+        if ret_type_py != "None":
+            python_wrapper_code += f"_lib.{func_name}.restype = {ret_type_py}\n"
         python_wrapper_code += f"def {func_name}({', '.join([arg.name for arg in args_py if not arg.returns])}):\n"
 
         for arg in [arg for arg in args_py if arg.returns and arg.dims]:
             python_wrapper_code += f"    {arg.name} = {arg.npobj}\n"
         for arg in [arg for arg in args_py if arg.dims]:
             python_wrapper_code += f"    assert {arg.name}.shape == {(arg.dims)}\n"
+            python_wrapper_code += f"    {arg.name} = _np.ascontiguousarray({arg.name}).astype({type_map[arg.type]})\n"
             python_wrapper_code += f"    {arg.name}_p = {arg.name}.ctypes.data_as({typewrap(arg.type, True)})\n"
             arg.passname = arg.name + "_p"
 
@@ -109,7 +119,7 @@ _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
             python_wrapper_code += f"    return _lib.{func_name}({', '.join([arg.passname for arg in args_py])})\n"
         else:
             python_wrapper_code += f"    _lib.{func_name}({', '.join([arg.passname for arg in args_py])})\n"
-            python_wrapper_code += f"    return ({', '.join([arg.name for arg in args_py if arg.returns])})\n"
+            python_wrapper_code += f"    return ({', '.join([arg.name + ('[0]' if arg.pointer else '') for arg in args_py if arg.returns])})\n"
         python_wrapper_code += f"\n"
         
 
