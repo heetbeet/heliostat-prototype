@@ -2,37 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sun_vector import get_solar_position
 from scipy.optimize import minimize
+import helioc.math_functions
+from helioc.math_functions import rotation_matrix_3d, to_180_form
 
-def to_180_form(degrees):
-    if isinstance(degrees, (list, tuple, np.ndarray)):
-        degrees = np.array(degrees)
-        degrees = degrees % 360  # Normalize to [0, 360)
-        degrees[degrees > 180] -= 360  # Convert to [-180, 180]
-        return degrees
-    else:
-        degrees = degrees % 360
-        if degrees > 180:
-            return degrees - 360
-        return degrees
-
-
-def rotation_matrix_3d(theta_rad, phi_rad):
-    # Rotation matrix in 3D space.
-    R_theta = np.array(
-        [
-            [np.cos(theta_rad), -np.sin(theta_rad), 0],
-            [np.sin(theta_rad), np.cos(theta_rad), 0],
-            [0, 0, 1],
-        ]
-    )
-    R_phi = np.array(
-        [
-            [1, 0, 0],
-            [0, np.cos(phi_rad), -np.sin(phi_rad)],
-            [0, np.sin(phi_rad), np.cos(phi_rad)],
-        ]
-    )
-    return R_phi @ R_theta
+# to_180_form = helioc.math_functions.to_180_form
+# rotation_matrix_3d= helioc.math_functions.rotation_matrix_3d(theta_rad, phi_rad)
 
 
 def get_normal_vector(degrees_from_north, degrees_elevation):
@@ -131,6 +105,7 @@ def get_sunray(sun_degrees_azimuth, sun_degrees_elevation):
 
     return point
 
+
 def plot_point(ax, midpoint, point, **kwargs):
     if not "arrow_length_ratio" in kwargs:
         kwargs["arrow_length_ratio"] = 0
@@ -149,9 +124,10 @@ def plot_point(ax, midpoint, point, **kwargs):
         **kwargs,
     )
 
+
 def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
     sunray_point = get_sunray(degrees_azimuth, degrees_elevation)
-    #reflected_point = reflect_ray(sunray_point, np.array([0, 1, 0]))
+    # reflected_point = reflect_ray(sunray_point, np.array([0, 1, 0]))
 
     length = 15
     ax.quiver(
@@ -165,7 +141,7 @@ def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
         arrow_length_ratio=0,
         length=length,
     )
-    #ax.quiver(
+    # ax.quiver(
     #    midpoint[0],
     #    midpoint[1],
     #    midpoint[2],
@@ -175,7 +151,7 @@ def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
     #    color="b",
     #    arrow_length_ratio=0,
     #    length=length,
-    #)
+    # )
 
 
 def plot_surface(ax, midpoint, degrees_from_north, degrees_elevation, r=0.5):
@@ -267,19 +243,20 @@ if __name__ == "__main__":
         start_degrees_from_north = 0
         start_degrees_elevation = 0
 
-        plot_sunray(ax, (-10, 0, 2.7), row["azimuth"]-8, row["elevation"])
-        ray = get_sunray(row["azimuth"]-8, row["elevation"])
+        plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] - 8, row["elevation"])
+        ray = get_sunray(row["azimuth"] - 8, row["elevation"])
 
         def objective(angles):
             reflection = reflect_ray(ray, get_normal_vector(angles[0], angles[1]))
             return euclidean_vector_distance(reflection, vector_dest)
-        
-        end_degrees_from_north, end_degrees_elivation = minimize(objective, (0,0)).x
-        reflection = reflect_ray(ray, get_normal_vector(end_degrees_from_north, end_degrees_elivation))
+
+        end_degrees_from_north, end_degrees_elivation = minimize(objective, (0, 0)).x
+        reflection = reflect_ray(
+            ray, get_normal_vector(end_degrees_from_north, end_degrees_elivation)
+        )
 
         plot_point(ax, (-10, 0, 2.7), reflection, color="b", length=15)
         plot_surface(ax, (-10, 0, 2.7), end_degrees_from_north, end_degrees_elivation)
-
 
         # break
 

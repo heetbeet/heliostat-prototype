@@ -11,16 +11,16 @@ double to_180_form(double degrees) {
     return degrees;
 }
 
-void rotation_matrix_3d(double theta_rad, double phi_rad, double matrix[3][3]) {
-    matrix[0][0] = cos(theta_rad);
-    matrix[0][1] = -sin(theta_rad);
-    matrix[0][2] = 0;
-    matrix[1][0] = sin(theta_rad);
-    matrix[1][1] = cos(theta_rad);
-    matrix[1][2] = 0;
-    matrix[2][0] = 0;
-    matrix[2][1] = 0;
-    matrix[2][2] = 1;
+void rotation_matrix_3d(double theta_rad, double phi_rad, double return_matrix[3][3]) {
+    return_matrix[0][0] = cos(theta_rad);
+    return_matrix[0][1] = -sin(theta_rad);
+    return_matrix[0][2] = 0;
+    return_matrix[1][0] = sin(theta_rad);
+    return_matrix[1][1] = cos(theta_rad);
+    return_matrix[1][2] = 0;
+    return_matrix[2][0] = 0;
+    return_matrix[2][1] = 0;
+    return_matrix[2][2] = 1;
 
     double R_phi[3][3] = {
         {1, 0, 0},
@@ -33,7 +33,7 @@ void rotation_matrix_3d(double theta_rad, double phi_rad, double matrix[3][3]) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             for (int k = 0; k < 3; k++) {
-                result[i][j] += R_phi[i][k] * matrix[k][j];
+                result[i][j] += R_phi[i][k] * return_matrix[k][j];
             }
         }
     }
@@ -41,7 +41,7 @@ void rotation_matrix_3d(double theta_rad, double phi_rad, double matrix[3][3]) {
     // Copy the result back into the input matrix
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            matrix[i][j] = result[i][j];
+            return_matrix[i][j] = result[i][j];
         }
     }
 }
