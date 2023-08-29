@@ -2,33 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sun_vector import get_solar_position
 from scipy.optimize import minimize
-import helioc.math_functions
-from helioc.math_functions import rotation_matrix_3d, to_180_form
-
-# to_180_form = helioc.math_functions.to_180_form
-# rotation_matrix_3d= helioc.math_functions.rotation_matrix_3d(theta_rad, phi_rad)
-
-
-def get_normal_vector(degrees_from_north, degrees_elevation):
-    """
-    Get the normal vector of a surface given its orientation angles.
-
-    Parameters:
-        degrees_from_north (float): The angle of the surface normal from the North direction.
-        degrees_elevation (float): The elevation angle of the surface normal.
-
-    Returns:
-        np.array: The normal vector corresponding to the given angles.
-    """
-    theta = -degrees_from_north
-    phi = -degrees_elevation
-    theta_rad = np.radians(theta)
-    phi_rad = np.radians(phi)
-    R = rotation_matrix_3d(theta_rad, phi_rad)
-
-    normal_vector = R @ np.array([0, -1, 0])  # Rotate the normal vector
-    return normal_vector
-
+from helioc.math_functions import rotation_matrix_3d, to_180_form, get_normal_vector
 
 def get_degrees(normal_vector):
     normal_vector = normal_vector / np.linalg.norm(normal_vector)
@@ -234,8 +208,6 @@ if __name__ == "__main__":
     # )  # Surface with red normal
 
     vector_dest = [9.5, -13, -2.2]
-    print(get_degrees([0, 1, -1]))
-    print(get_degrees([-1, -1, 0]))
 
     df = get_solar_position("2023-08-01", -33.8352, 18.6510)
     df = df.iloc[:: int(len(df) / 20)]

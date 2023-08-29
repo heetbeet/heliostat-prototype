@@ -55,7 +55,7 @@ import numpy as _np
 _this_dir = _Path(__file__).parent.absolute()
 
 # Load the shared library
-_lib = _ctypes.CDLL(str(_this_dir.parent / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
+_lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
 
     ctype_map = {
         "double": "_ctypes.c_double",
@@ -150,7 +150,7 @@ def compile():
 
     shutil.copy2(CYGWIN_PATH + r"/cygwin1.dll", gcc_dir / "cygwin1.dll")
 
-    Path(py_dir.parent / "__init__.py").write_text(
+    Path(py_dir / "__init__.py").write_text(
         "\n".join(
             [
                 "import ctypes as _ctypes",

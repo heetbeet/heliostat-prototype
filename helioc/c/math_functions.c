@@ -2,6 +2,12 @@
 #include <math.h>
 #include <stdio.h>
 
+#define PI 3.14159265358979323846
+
+double to_radians(double degrees) {
+    return (degrees * PI) / 180.0;
+}
+
 double to_180_form(double degrees) {    
     degrees = fmod(degrees, 360.0);
     if (degrees > 180.0) {
@@ -46,3 +52,29 @@ void rotation_matrix_3d(double theta_rad, double phi_rad, double return_matrix[3
     }
 }
 
+
+void get_normal_vector(double degrees_from_north, double degrees_elevation, double return_normal[3]) {
+    double theta = -degrees_from_north;
+    double phi = -degrees_elevation;
+
+    double theta_rad = to_radians(theta);
+    double phi_rad = to_radians(phi);
+
+    double R[3][3];
+    rotation_matrix_3d(theta_rad, phi_rad, R);
+
+    // The original normal vector is [0, -1, 0]
+    double original_normal[3] = {0, -1, 0};
+    
+    // Initialize the resulting normal vector to zero
+    for (int i = 0; i < 3; ++i) {
+        return_normal[i] = 0;
+    }
+
+    // Perform matrix-vector multiplication
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            return_normal[i] += R[i][j] * original_normal[j];
+        }
+    }
+}
