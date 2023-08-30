@@ -187,7 +187,6 @@ if __name__ == "__main__":
 
         ray = get_sunray(row["azimuth"] -8, row["elevation"])
 
-        
         surface_normal = ((-ray / np.linalg.norm(ray)) + (vector_dest/ np.linalg.norm(vector_dest)))/2
 
         degrees_from_north, degrees_elivation = get_degrees(surface_normal)

@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from types import SimpleNamespace
 
-CYGWIN_PATH = r"C:\Users\simon\Applications\cygwin\bin"
+CYGWIN_PATH = Path(__file__).parent.resolve() / "bin/cygwin/cygwin/bin"
 
 ctype_map = {
     "double": "_ctypes.c_double",
@@ -162,14 +162,12 @@ def compile():
     for c_file in c_files:
         subprocess.call(
             [
-                rf"{CYGWIN_PATH}\bash.exe",
-                "--login",
-                "-c",
+                rf"{CYGWIN_PATH}\..\..\cygwin-portable.cmd",
                 rf'cd "{gcc_dir}"; gcc -m64 -shared -o {c_file.stem}.dll "{c_file}"',
             ]
         )
 
-    shutil.copy2(CYGWIN_PATH + r"/cygwin1.dll", gcc_dir / "cygwin1.dll")
+    shutil.copy2(f"{CYGWIN_PATH}/cygwin1.dll", gcc_dir / "cygwin1.dll")
 
     Path(py_dir / "__init__.py").write_text(
         "\n".join(

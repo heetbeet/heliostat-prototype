@@ -1,18 +1,23 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from pvlib import solarposition
-import matplotlib.colors as mcolors
+
+#from pvlib import solarposition
+#import matplotlib.colors as mcolors
+
+import helioc
+from helioc.solar_position import solar_az_el
+from helioc.math_functions import to_180_form
 
 
 def flatten(lst):
     return [item for sublist in lst for item in sublist]
 
 
-def to_180_form(degrees):
-    degrees = degrees % 360  # Normalize to [0, 360)
-    degrees[degrees > 180] -= 360  # Convert to [-180, 180]
-    return degrees
+#def to_180_form(degrees):
+#    degrees = degrees % 360  # Normalize to [0, 360)
+#    degrees[degrees > 180] -= 360  # Convert to [-180, 180]
+#    return degrees
 
 
 # Constants
@@ -29,8 +34,7 @@ ax.set_thetamin(-180)
 ax.set_thetamax(180)
 
 
-# for date in flatten([[f'2023-{i:02d}-{int(j)}' for j in np.linspace(1, 31, 10)] for i in range(1, 13)]):
-for date in ["2023-08-01"]:
+for date in flatten([[f'2023-{i:02d}-{int(j)}' for j in np.linspace(1, 31, 10)] for i in range(1, 13)]):
     # Generate time range for the specific date
     try:
         times = pd.date_range(date, freq="5min", periods=288, tz=tz)
@@ -38,22 +42,24 @@ for date in ["2023-08-01"]:
         continue
 
     # Calculate solar position
-    solpos = solarposition.get_solarposition(times, latitude, longitude)
+    #solpos = solarposition.get_solarposition(times, latitude, longitude)
+    solpos = [solar_az_el(i.year, i.month, i.day, i.hour, i.minute, i.second - i.utcoffset().seconds, latitude, longitude, 0) for i in times]
 
+    solpos = [list(sp)+[times[i]] for i, sp in enumerate(solpos) if sp[1] >= 0]
     # Filter out times when the sun is below the horizon
-    solpos = solpos[solpos["elevation"] >= 0]
+    #solpos = solpos[solpos["elevation"] >= 0]
 
     # Normalize colors
     norm = plt.Normalize(vmin=0, vmax=23)
 
     # Convert azimuth to radians
-    azimuth_radians = np.radians(to_180_form(solpos["azimuth"]))
+    azimuth_radians = np.radians([to_180_form(i[0]) for i in solpos])
 
     # Plot the sun path
     sc = ax.scatter(
         azimuth_radians,
-        to_180_form(90 - solpos["elevation"]),
-        c=solpos.index.hour,
+        [to_180_form(90 - i[1]) for i in solpos],
+        c=[i[2].hour for i in solpos],
         cmap="bwr",
         norm=norm,
         s=10,
