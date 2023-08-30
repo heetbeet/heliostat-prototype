@@ -12,7 +12,5 @@ void get_normal_vector(double degrees_from_north, double degrees_elevation, doub
 double closest_point_distance(double point[3], double midpoint[3], double direction[3]);
 double euclidean_distance(double vector1[3], double vector2[3]);
 double euclidean_vector_distance(double vector1[3], double vector2[3]);
-double julian_day(int year, int month, int day, int hour, int min, int sec);
-void SolarAzEl(int year, int month, int day, int hour, int min, int sec, double Lat, double Lon, double Alt, double* return_Az, double* return_El);
 
 #endif // MATH_FUNCTIONS_H

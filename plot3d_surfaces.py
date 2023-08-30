@@ -1,6 +1,7 @@
+import helioc
 import matplotlib.pyplot as plt
 import numpy as np
-from sun_vector import get_solar_position
+
 from scipy.optimize import minimize
 from helioc.math_functions import (
     rotation_matrix_3d,
@@ -9,10 +10,8 @@ from helioc.math_functions import (
     get_degrees,
     closest_point_distance,
     euclidean_vector_distance, 
-    calculate_sun_position,
-    sunae,
-    SolarAzEl
 )
+from sun_vector import get_solar_position
 
 
 def reflect_ray(ray_direction, normal):
@@ -81,10 +80,17 @@ def plot_point(ax, midpoint, point, **kwargs):
     )
 
 
-def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
+def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, **kwargs):
     sunray_point = get_sunray(degrees_azimuth, degrees_elevation)
 
-    length = 15
+    if "length" not in kwargs:
+        kwargs["length"] = 15
+    if "arrow_length_ratio" not in kwargs:
+        kwargs["arrow_length_ratio"] = 0
+    if "color" not in kwargs:
+        kwargs["color"] = "y"
+    
+    length = kwargs["length"]
     ax.quiver(
         midpoint[0] - sunray_point[0] * length,
         midpoint[1] - sunray_point[1] * length,
@@ -92,9 +98,7 @@ def plot_sunray(ax, midpoint, degrees_azimuth, degrees_elevation, r=0.5):
         sunray_point[0],
         sunray_point[1],
         sunray_point[2],
-        color="y",
-        arrow_length_ratio=0,
-        length=length,
+        **kwargs
     )
 
 
@@ -171,10 +175,6 @@ if __name__ == "__main__":
         X2, Y2, Z2, alpha=0.5, facecolors="g", rstride=100, cstride=100, linewidth=0
     )
 
-    # plot_surface(
-    #    ax, midpoint=(-10, 0, 2.7), degrees_from_north=0, degrees_elevation=10
-    # )  # Surface with red normal
-
     vector_dest = np.array([9.5, -13, -2.2])
 
     df = get_solar_position("2023-08-01", -33.8352, 18.6510)
@@ -183,48 +183,21 @@ if __name__ == "__main__":
     for i, row in df.iterrows():
         time = row["time"]
         
-        #az, el = sunae(time.year, time.dayofyear, (time.hour + time.minute / 60 + time.second / 3600) + 2, -33.8352, 18.6510)
-        az, el = SolarAzEl(
-            time.year,
-            time.month,
-            time.day,
-            time.hour,
-            time.minute,
-            time.second,
-            -33.8352,
-            18.6510,
-            163
-        )
+        plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] -8, row["elevation"], color="y")
 
-        start_degrees_from_north = 0
-        start_degrees_elevation = 0
+        ray = get_sunray(row["azimuth"] -8, row["elevation"])
 
-        #plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] -8, row["elevation"])
-        #plot_sunray(ax, (-10, 0, 2.7), az - 8, el)
+        
+        surface_normal = ((-ray / np.linalg.norm(ray)) + (vector_dest/ np.linalg.norm(vector_dest)))/2
 
-
-        ray = get_sunray(az - 8, el)
-        ray_2 = get_sunray(row["azimuth"] - 8, row["elevation"])
-
-        plot_point(ax, (0, 0, 0), ray, color="r", length=15)
-        plot_point(ax, (0, 0, 0), -ray_2, color="g", length=15)
-
-        print(euclidean_vector_distance(ray, ray_2))
-
-        '''
-        def objective(angles):
-            reflection = reflect_ray(ray, get_normal_vector(angles[0], angles[1]))
-            return euclidean_vector_distance(reflection, vector_dest)
-
-        end_degrees_from_north, end_degrees_elivation = minimize(objective, (0, 0)).x
+        degrees_from_north, degrees_elivation = get_degrees(surface_normal)
         reflection = reflect_ray(
-            ray, get_normal_vector(end_degrees_from_north, end_degrees_elivation)
+            ray, get_normal_vector(degrees_from_north, degrees_elivation)
         )
 
         plot_point(ax, (-10, 0, 2.7), reflection, color="b", length=15)
-        plot_surface(ax, (-10, 0, 2.7), end_degrees_from_north, end_degrees_elivation)
-        '''
-        # break
+        plot_surface(ax, (-10, 0, 2.7), degrees_from_north, degrees_elivation)
+        
 
     # Labels and title
     ax.set_xlabel("X")
