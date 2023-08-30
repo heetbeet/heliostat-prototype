@@ -3,8 +3,11 @@ from pathlib import Path
 import shutil
 import subprocess
 from types import SimpleNamespace
+from contextlib import contextmanager
+import tempfile
 
 CYGWIN_PATH = Path(__file__).parent.resolve() / "bin/cygwin/cygwin/bin"
+tcc_path = Path(__file__).parent.resolve() / "bin/tcc/tcc.exe"
 
 ctype_map = {
     "double": "_ctypes.c_double",
@@ -23,16 +26,28 @@ type_map = {
     "void": "None",
 }
 
+function_pattern = f"(({'|'.join([re.escape(i) for i in type_map])})\\s+(\\w+)\\s*\\((.*?)\\)\\s*(;|\\{{)?)(\\s*/\\*.*?\\*/)?"
+
+
+@contextmanager
+def dll_exported_source(c_dir):
+    with tempfile.TemporaryDirectory() as tdir:
+        for file in c_dir.rglob("*.c"):
+            c_code = file.read_text()
+
+            def replace(match):
+                return f"__declspec(dllexport) {match.group(1)}"
+
+            c_code = re.sub(function_pattern, replace, c_code)
+
+            outfile = Path(tdir) / file.relative_to(c_dir)
+            outfile.parent.mkdir(exist_ok=True, parents=True)
+            outfile.write_text(c_code)
+
+        yield Path(tdir)
+
 
 def extract_functions(c_code):
-    types = ["double", "float", "int", "char", "void"]
-    type_pattern = "|".join([re.escape(i) for i in types])
-    types = ["double", "float", "int", "char", "void"]
-    type_pattern = "|".join(types)
-    function_pattern = (
-        f"(({type_pattern})\\s+(\\w+)\\s*\\((.*?)\\)\\s*(;|\\{{)?)(\\s*/\\*.*?\\*/)?"
-    )
-
     # Add re.DOTALL to make '.' match any character including newlines
     unpacked = [
         [ret_type, func_name, args, docstring]
@@ -157,8 +172,23 @@ def compile():
         file.unlink()
 
     for c_file in c_files:
+        # replace double with float
+        # c_file.write_text(c_file.read_text().replace("double", "float"))
+        c_file.write_text(c_file.read_text().replace("float", "double"))
         generate_files(c_file)
 
+    # with dll_exported_source(c_dir) as exported_c_dir:
+    #    for c_file in exported_c_dir.rglob("*.c"):
+    #        subprocess.call(
+    #            [
+    #                f"{tcc_path}",
+    #                f"-I{gcc_dir}",
+    #                f"-shared",
+    #                f"-o",
+    #                f"{gcc_dir / c_file.stem}.dll",
+    #                f"{c_file}",
+    #            ]
+    #        )
     for c_file in c_files:
         subprocess.call(
             [

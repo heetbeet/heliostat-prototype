@@ -11,7 +11,7 @@ from helioc.math_functions import (
     closest_point_distance,
     euclidean_vector_distance, 
 )
-from sun_vector import get_solar_position
+from sun_vector import get_solar_position, get_solar_position_pvlib
 
 
 def reflect_ray(ray_direction, normal):
@@ -178,14 +178,18 @@ if __name__ == "__main__":
     vector_dest = np.array([9.5, -13, -2.2])
 
     df = get_solar_position("2023-08-01", -33.8352, 18.6510)
-    df = df.iloc[:: int(len(df) / 20)]
+    df = df.iloc[:: int(len(df) / 60)]
 
-    for i, row in df.iterrows():
+    #df2 = get_solar_position_pvlib("2023-08-01", -33.8352, 18.6510)
+    #df2 = df2.iloc[:: int(len(df2) / 20)]
+
+    diffs = []
+    for (i, row) in df.iterrows():
         time = row["time"]
         
-        plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] -8, row["elevation"], color="y")
-
         ray = get_sunray(row["azimuth"] -8, row["elevation"])
+
+        plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] -8, row["elevation"], color="y")
 
         surface_normal = ((-ray / np.linalg.norm(ray)) + (vector_dest/ np.linalg.norm(vector_dest)))/2
 
@@ -197,6 +201,7 @@ if __name__ == "__main__":
         plot_point(ax, (-10, 0, 2.7), reflection, color="b", length=15)
         plot_surface(ax, (-10, 0, 2.7), degrees_from_north, degrees_elivation)
         
+
 
     # Labels and title
     ax.set_xlabel("X")
