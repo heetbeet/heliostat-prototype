@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #define PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846
 #define J2000_0 2451545.0
 #define DEG_TO_RAD (PI / 180.0)
 #define RAD_TO_DEG (180.0 / PI)
@@ -144,53 +145,4 @@ double euclidean_vector_distance(double vector1[3], double vector2[3]) {
     normalize_vector(vector1, normalize_vector1);
     normalize_vector(vector2, normalize_vector2);
     return euclidean_distance(normalize_vector1, normalize_vector2);
-}
-
-
-void calculate_sun_position(double day, double month, double year, double UT_hour, double UT_minute, double UT_second, double latitude, double longitude, double *return_Az, double *return_El) {
-    // Convert Universal Time to a decimal (hours)
-    double UT = UT_hour + UT_minute / 60.0 + UT_second / 3600.0;
-  
-    // Julian Date Calculation (Simplified)
-    double JD = day + ((month - 1) / 12.0) + year + (UT / 24.0) - 0.5;
-
-    // Number of Centuries since the Epoch (J2000.0)
-    double n = JD - J2000_0;
-    double T = n / 36525.0;
-
-    // Sun's Mean Longitude (normalized to [0, 360))
-    double L0 = fmod(280.46646 + 36000.76983 * T + 0.0003032 * pow(T, 2), 360.0);
-
-    // Mean Anomaly (normalized to [0, 360))
-    double M = fmod(357.52911 + 35999.05029 * T - 0.0001537 * pow(T, 2), 360.0);
-
-    // Calculate Eccentricity
-    double e = 0.016708634 - 0.000042037 * T - 0.0000001267 * pow(T, 2);
-
-    // Calculate Sun's Apparent Longitude (degrees)
-    double lambda = L0 + ( (1.914602 - 0.004817 * T - 0.000014 * pow(T, 2)) * sin(DEG_TO_RAD * M) + (0.019993 - 0.000101 * T) * sin(DEG_TO_RAD * 2 * M) + 0.000289 * sin(DEG_TO_RAD * 3 * M) );
-
-    // Calculate Sun's Declination (degrees)
-    double delta = asin(sin(DEG_TO_RAD * lambda) * sin(DEG_TO_RAD * (23.436993 + 0.000013 * T))) * RAD_TO_DEG;
-
-    // Calculate Equation of Time in minutes
-    double EoT = 229.18 * (0.000075 + 0.001868 * cos(DEG_TO_RAD * M) - 0.032077 * sin(DEG_TO_RAD * M) - 0.014615 * cos(DEG_TO_RAD * 2 * M) - 0.040849 * sin(DEG_TO_RAD * 2 * M));
-
-    // Convert EoT to hours
-    double EoT_hours = EoT / 60.0;
-
-    // Hour Angle Calculation with Equation of Time
-    double H = fmod(15.0 * (UT + 4.0 * (lambda - longitude) + EoT_hours) - 180.0, 360.0);
-
-    // Calculate Elevation and Azimuth
-    double phi = latitude * DEG_TO_RAD;
-    double H_rad = H * DEG_TO_RAD;
-    double delta_rad = delta * DEG_TO_RAD;
-
-    double El_rad = asin(sin(phi) * sin(delta_rad) + cos(phi) * cos(delta_rad) * cos(H_rad));
-    double Az_rad = acos((sin(delta_rad) - sin(El_rad) * sin(phi)) / (cos(El_rad) * cos(phi)));
-    double Az_rad_corrected = (sin(delta_rad) < 0) ? (PI - Az_rad) : Az_rad;
-
-    *return_El = El_rad * RAD_TO_DEG;
-    *return_Az = Az_rad_corrected * RAD_TO_DEG;
 }

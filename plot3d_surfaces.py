@@ -9,7 +9,9 @@ from helioc.math_functions import (
     get_degrees,
     closest_point_distance,
     euclidean_vector_distance, 
-    calculate_sun_position
+    calculate_sun_position,
+    sunae,
+    SolarAzEl
 )
 
 
@@ -177,26 +179,39 @@ if __name__ == "__main__":
 
     df = get_solar_position("2023-08-01", -33.8352, 18.6510)
     df = df.iloc[:: int(len(df) / 20)]
+
     for i, row in df.iterrows():
         time = row["time"]
-        day, month, year, hour, minute, second = (
-            time.day,
-            time.month,
+        
+        #az, el = sunae(time.year, time.dayofyear, (time.hour + time.minute / 60 + time.second / 3600) + 2, -33.8352, 18.6510)
+        az, el = SolarAzEl(
             time.year,
+            time.month,
+            time.day,
             time.hour,
             time.minute,
             time.second,
+            -33.8352,
+            18.6510,
+            163
         )
-
-        az, el = calculate_sun_position(day, month, year, hour, minute, second, -33.8352, 18.6510)
-        print(to_180_form(180) - to_180_form(row["azimuth"]), ";  ", to_180_form(el) -  to_180_form(row["elevation"]))
 
         start_degrees_from_north = 0
         start_degrees_elevation = 0
 
-        plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] - 8, row["elevation"])
-        ray = get_sunray(row["azimuth"] - 8, row["elevation"])
+        #plot_sunray(ax, (-10, 0, 2.7), row["azimuth"] -8, row["elevation"])
+        #plot_sunray(ax, (-10, 0, 2.7), az - 8, el)
 
+
+        ray = get_sunray(az - 8, el)
+        ray_2 = get_sunray(row["azimuth"] - 8, row["elevation"])
+
+        plot_point(ax, (0, 0, 0), ray, color="r", length=15)
+        plot_point(ax, (0, 0, 0), -ray_2, color="g", length=15)
+
+        print(euclidean_vector_distance(ray, ray_2))
+
+        '''
         def objective(angles):
             reflection = reflect_ray(ray, get_normal_vector(angles[0], angles[1]))
             return euclidean_vector_distance(reflection, vector_dest)
@@ -208,7 +223,7 @@ if __name__ == "__main__":
 
         plot_point(ax, (-10, 0, 2.7), reflection, color="b", length=15)
         plot_surface(ax, (-10, 0, 2.7), end_degrees_from_north, end_degrees_elivation)
-
+        '''
         # break
 
     # Labels and title

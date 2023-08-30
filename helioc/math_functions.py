@@ -2,23 +2,21 @@ import ctypes as _ctypes
 from pathlib import Path as _Path
 import numpy as _np
 _this_dir = _Path(__file__).parent.absolute()
-
-# Load the shared library
 _lib = _ctypes.CDLL(str(_this_dir / 'gcc/math_functions.dll'))
 
-# Declare argument types for to_radians
+
 _lib.to_radians.argtypes = [_ctypes.c_double]
 _lib.to_radians.restype = _ctypes.c_double
 def to_radians(degrees):
     return _lib.to_radians(degrees)
 
-# Declare argument types for to_degrees
+
 _lib.to_degrees.argtypes = [_ctypes.c_double]
 _lib.to_degrees.restype = _ctypes.c_double
 def to_degrees(radians):
     return _lib.to_degrees(radians)
 
-# Declare argument types for normalize_vector
+
 _lib.normalize_vector.argtypes = [_ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
 def normalize_vector(vector):
     return_vector = _np.zeros((3,), dtype=_np.float64)
@@ -31,7 +29,7 @@ def normalize_vector(vector):
     _lib.normalize_vector(vector_p, return_vector_p)
     return (return_vector)
 
-# Declare argument types for get_degrees
+
 _lib.get_degrees.argtypes = [_ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
 def get_degrees(normal_vector):
     return_theta_deg = _np.zeros((1,), dtype=_np.float64)
@@ -48,7 +46,7 @@ def get_degrees(normal_vector):
     _lib.get_degrees(normal_vector_p, return_theta_deg_p, return_phi_deg_p)
     return (return_theta_deg[0], return_phi_deg[0])
 
-# Declare argument types for dot_product
+
 _lib.dot_product.argtypes = [_ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
 _lib.dot_product.restype = _ctypes.c_double
 def dot_product(vector1, vector2):
@@ -60,13 +58,13 @@ def dot_product(vector1, vector2):
     vector2_p = vector2.ctypes.data_as(_ctypes.POINTER(_ctypes.c_double))
     return _lib.dot_product(vector1_p, vector2_p)
 
-# Declare argument types for to_180_form
+
 _lib.to_180_form.argtypes = [_ctypes.c_double]
 _lib.to_180_form.restype = _ctypes.c_double
 def to_180_form(degrees):
     return _lib.to_180_form(degrees)
 
-# Declare argument types for rotation_matrix_3d
+
 _lib.rotation_matrix_3d.argtypes = [_ctypes.c_double, _ctypes.c_double, _ctypes.POINTER(_ctypes.c_double)]
 def rotation_matrix_3d(theta_rad, phi_rad):
     return_matrix = _np.zeros((3, 3), dtype=_np.float64)
@@ -76,7 +74,7 @@ def rotation_matrix_3d(theta_rad, phi_rad):
     _lib.rotation_matrix_3d(theta_rad, phi_rad, return_matrix_p)
     return (return_matrix)
 
-# Declare argument types for get_normal_vector
+
 _lib.get_normal_vector.argtypes = [_ctypes.c_double, _ctypes.c_double, _ctypes.POINTER(_ctypes.c_double)]
 def get_normal_vector(degrees_from_north, degrees_elevation):
     return_normal = _np.zeros((3,), dtype=_np.float64)
@@ -86,7 +84,7 @@ def get_normal_vector(degrees_from_north, degrees_elevation):
     _lib.get_normal_vector(degrees_from_north, degrees_elevation, return_normal_p)
     return (return_normal)
 
-# Declare argument types for closest_point_distance
+
 _lib.closest_point_distance.argtypes = [_ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
 _lib.closest_point_distance.restype = _ctypes.c_double
 def closest_point_distance(point, midpoint, direction):
@@ -101,7 +99,7 @@ def closest_point_distance(point, midpoint, direction):
     direction_p = direction.ctypes.data_as(_ctypes.POINTER(_ctypes.c_double))
     return _lib.closest_point_distance(point_p, midpoint_p, direction_p)
 
-# Declare argument types for euclidean_distance
+
 _lib.euclidean_distance.argtypes = [_ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
 _lib.euclidean_distance.restype = _ctypes.c_double
 def euclidean_distance(vector1, vector2):
@@ -113,7 +111,7 @@ def euclidean_distance(vector1, vector2):
     vector2_p = vector2.ctypes.data_as(_ctypes.POINTER(_ctypes.c_double))
     return _lib.euclidean_distance(vector1_p, vector2_p)
 
-# Declare argument types for euclidean_vector_distance
+
 _lib.euclidean_vector_distance.argtypes = [_ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
 _lib.euclidean_vector_distance.restype = _ctypes.c_double
 def euclidean_vector_distance(vector1, vector2):
@@ -125,9 +123,37 @@ def euclidean_vector_distance(vector1, vector2):
     vector2_p = vector2.ctypes.data_as(_ctypes.POINTER(_ctypes.c_double))
     return _lib.euclidean_vector_distance(vector1_p, vector2_p)
 
-# Declare argument types for calculate_sun_position
-_lib.calculate_sun_position.argtypes = [_ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
-def calculate_sun_position(day, month, year, UT_hour, UT_minute, UT_second, latitude, longitude):
+
+_lib.julian_day.argtypes = [_ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int]
+_lib.julian_day.restype = _ctypes.c_double
+def julian_day(year, month, day, hour, min, sec):
+    return _lib.julian_day(year, month, day, hour, min, sec)
+
+
+_lib.SolarAzEl.argtypes = [_ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_int, _ctypes.c_double, _ctypes.c_double, _ctypes.c_double, _ctypes.POINTER(_ctypes.c_double), _ctypes.POINTER(_ctypes.c_double)]
+def SolarAzEl(year, month, day, hour, min, sec, Lat, Lon, Alt):
+    r'''
+    Calculates Solar Azimuth and Elevation using UTC time, latitude, longitude and altitude. Ported from MATLAB to C++ to C.
+    
+    - MATLAB: Darin C. Koblick https://www.mathworks.com/matlabcentral/profile/authors/1284781-darin-koblick
+    - C++ port: Kevin Godden https://www.ridgesolutions.ie/index.php/2020/01/14/c-code-to-estimate-solar-azimuth-and-elevation-given-gps-position-and-time/
+
+    Arguments:
+        year: UTC year
+        month: UTC month
+        day: UTC day
+        hour: UTC hour
+        min: UTC minute
+        sec: UTC second
+        Lat: Latitude in degrees
+        Lon: Longitude in degrees
+        Alt: Altitude in meters
+
+    Returns:
+        Az: Azimuth in degrees 
+        El: Elevation in degrees
+    
+    '''
     return_Az = _np.zeros((1,), dtype=_np.float64)
     return_El = _np.zeros((1,), dtype=_np.float64)
     assert return_Az.shape == (1,)
@@ -136,6 +162,6 @@ def calculate_sun_position(day, month, year, UT_hour, UT_minute, UT_second, lati
     assert return_El.shape == (1,)
     return_El = _np.ascontiguousarray(return_El).astype(_np.float64)
     return_El_p = return_El.ctypes.data_as(_ctypes.POINTER(_ctypes.c_double))
-    _lib.calculate_sun_position(day, month, year, UT_hour, UT_minute, UT_second, latitude, longitude, return_Az_p, return_El_p)
+    _lib.SolarAzEl(year, month, day, hour, min, sec, Lat, Lon, Alt, return_Az_p, return_El_p)
     return (return_Az[0], return_El[0])
 

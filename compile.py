@@ -6,13 +6,42 @@ from types import SimpleNamespace
 
 CYGWIN_PATH = r"C:\Users\simon\Applications\cygwin\bin"
 
+ctype_map = {
+    "double": "_ctypes.c_double",
+    "float": "_ctypes.c_float",
+    "int": "_ctypes.c_int",
+    "char": "_ctypes.c_char",
+    "void": "None",
+}
+
+type_map = {
+    "double": "_np.float64",
+    "float": "_np.float32",
+    "int": "_np.intc",  # Platform-dependent
+    "long": "_np.int_",  # Platform-dependent
+    "char": "_np.int8",
+    "void": "None",
+}
+
 
 def extract_functions(c_code):
     types = ["double", "float", "int", "char", "void"]
+    type_pattern = "|".join([re.escape(i) for i in types])
+    types = ["double", "float", "int", "char", "void"]
     type_pattern = "|".join(types)
-    function_pattern = f"(({type_pattern})\\s+(\\w+)\\s*\\((.*?)\\)\\s*(?=;|\\{{))"
+    function_pattern = (
+        f"(({type_pattern})\\s+(\\w+)\\s*\\((.*?)\\)\\s*(;|\\{{)?)(\\s*/\\*.*?\\*/)?"
+    )
 
-    return re.findall(function_pattern, c_code)
+    # Add re.DOTALL to make '.' match any character including newlines
+    unpacked = [
+        [ret_type, func_name, args, docstring]
+        for _, ret_type, func_name, args, _, docstring in re.findall(
+            function_pattern, c_code, re.DOTALL
+        )
+    ]
+    return unpacked
+
 
 def extract_arg_type(arg_str):
     regex = r"(\w+)\s*(\*?)\s*(\w+)((\[\s*\d+\s*\]\s*)*)"
@@ -32,19 +61,17 @@ def generate_files(c_file):
     gccdir = Path(c_file).parent.parent / "gcc"
     gccdir.mkdir(exist_ok=True)
 
-    pydir = Path(c_file).parent.parent 
+    pydir = Path(c_file).parent.parent
     pydir.mkdir(exist_ok=True)
 
     # Regular expression for function declarations in C code
     c_code = Path(c_file).read_text()
-    regex = r"((?:\w+\s*\*?\s*)+)\s+(\w+)\s*\(([^)]*)\)\s*;"
     function_declarations = extract_functions(c_code)
-
 
     # Generate header file
     guardname = Path(c_file).stem.upper() + "_H"
     header_code = f"#ifndef {guardname}\n#define {guardname}\n\n"
-    for _, ret_type, func_name, args in function_declarations:
+    for ret_type, func_name, args, docstring in function_declarations:
         header_code += f"{ret_type} {func_name}({args});\n"
     header_code += f"\n#endif // {guardname}"
 
@@ -53,59 +80,44 @@ def generate_files(c_file):
 from pathlib import Path as _Path
 import numpy as _np
 _this_dir = _Path(__file__).parent.absolute()
-
-# Load the shared library
 _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
 
-    ctype_map = {
-        "double": "_ctypes.c_double",
-        "float": "_ctypes.c_float",
-        "int": "_ctypes.c_int",
-        "char": "_ctypes.c_char",
-        "void": "None",
-    }
-    type_map = {
-        "double": "_np.float64",
-        "float": "_np.float32",
-        #"int": "_np.int32",
-        "int": "_np.intc",  # Platform-dependent
-        "long": "_np.int_",  # Platform-dependent
-        "char": "_np.int8",
-        "void": "None",
-    }
-
-    for _, ret_type, func_name, args in function_declarations:
+    for ret_type, func_name, args, docstring in function_declarations:
         ret_type_py = ctype_map[ret_type.strip()]
-        
+
         args_c = [arg.strip() for arg in args.split(",") if arg]
 
-        typewrap = lambda x, dims: f"_ctypes.POINTER({ctype_map[x]})" if dims else ctype_map[x]
+        typewrap = (
+            lambda x, dims: f"_ctypes.POINTER({ctype_map[x]})" if dims else ctype_map[x]
+        )
 
-        
         args_py = []
         for arg in args_c:
             arg_type, pointer, arg_name, dims = extract_arg_type(arg)
-            
+
             if pointer:
                 dims = (1,)
 
             args_py.append(
                 SimpleNamespace(
-                name = arg_name,
-                passname = arg_name,
-                type = arg_type,
-                ctype = typewrap(arg_type, dims),
-                npobj = f"_np.zeros({tuple((int(i) for i in dims))}, dtype={type_map[arg_type]})",
-                pointer = pointer,
-                dims = tuple((int(i) for i in dims)),
-                returns = arg_name.startswith("return_")
-            ))
+                    name=arg_name,
+                    passname=arg_name,
+                    type=arg_type,
+                    ctype=typewrap(arg_type, dims),
+                    npobj=f"_np.zeros({tuple((int(i) for i in dims))}, dtype={type_map[arg_type]})",
+                    pointer=pointer,
+                    dims=tuple((int(i) for i in dims)),
+                    returns=arg_name.startswith("return_"),
+                )
+            )
 
-        python_wrapper_code += f"# Declare argument types for {func_name}\n"
+        python_wrapper_code += f"\n"
         python_wrapper_code += f"_lib.{func_name}.argtypes = [{', '.join([arg.ctype for arg in args_py])}]\n"
         if ret_type_py != "None":
             python_wrapper_code += f"_lib.{func_name}.restype = {ret_type_py}\n"
         python_wrapper_code += f"def {func_name}({', '.join([arg.name for arg in args_py if not arg.returns])}):\n"
+        if docstring:
+            python_wrapper_code += f"    r'''{docstring.strip()[2:-2]}\n    '''\n"
 
         for arg in [arg for arg in args_py if arg.returns and arg.dims]:
             python_wrapper_code += f"    {arg.name} = {arg.npobj}\n"
@@ -121,7 +133,6 @@ _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
             python_wrapper_code += f"    _lib.{func_name}({', '.join([arg.passname for arg in args_py])})\n"
             python_wrapper_code += f"    return ({', '.join([arg.name + ('[0]' if arg.pointer else '') for arg in args_py if arg.returns])})\n"
         python_wrapper_code += f"\n"
-        
 
     with open(gccdir / (Path(c_file).stem + ".h"), "w") as f:
         f.write(header_code)
