@@ -3,6 +3,22 @@
 #include <stdio.h>
 
 double julian_day(int year, int month, int day, int hour, int min, int sec) {
+    /*
+    Calculates the Julian Day Number for a given date and time in UTC time. I found the least confusing way to enter
+    a local time is to add the offset to sec, i.e. `sec = time.seconds + time.utcoffset().seconds`
+
+    Args:
+        year: The year as an integer (e.g., 2023).
+        month: The month as an integer (1 for January, 12 for December).
+        day: The day of the month as an integer.
+        hour: The hour of the day (0-23).
+        min: The minute of the hour (0-59).
+        sec: The second of the minute (0-59).
+
+    Returns:
+        The Julian Day Number as a double precision doubleing-point number.
+
+    */
     if (month <= 2) {
         year -= 1;
         month += 12;
@@ -22,7 +38,7 @@ void solar_az_el(int year, int month, int day, int hour, int min, int sec, doubl
     
     This function can be expanded by following these suggestions: https://chat.openai.com/share/98aebdd1-328c-4016-9860-02583f9f18b7
 
-    Arguments:
+    Args:
         year: UTC year
         month: UTC month
         day: UTC day
@@ -36,6 +52,7 @@ void solar_az_el(int year, int month, int day, int hour, int min, int sec, doubl
     Returns:
         az: Azimuth in degrees 
         el: Elevation in degrees
+        
     */
 
     double pi = 3.14159265358979323846;

@@ -2,3 +2,4 @@ pvlib
 matplotlib
 pandas
 timezonefinder
+pycparser

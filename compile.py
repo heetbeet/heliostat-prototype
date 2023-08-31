@@ -5,9 +5,11 @@ import subprocess
 from types import SimpleNamespace
 from contextlib import contextmanager
 import tempfile
+import os
 
-CYGWIN_PATH = Path(__file__).parent.resolve() / "bin/cygwin/cygwin/bin"
+cygwin_dir = Path(__file__).parent.resolve() / "bin/cygwin/cygwin/bin"
 tcc_path = Path(__file__).parent.resolve() / "bin/tcc/tcc.exe"
+w64devkit_path = Path(__file__).parent.resolve() / "bin/w64devkit/bin/sh.exe"
 
 ctype_map = {
     "double": "_ctypes.c_double",
@@ -132,7 +134,7 @@ _lib = _ctypes.CDLL(str(_this_dir / 'gcc/{Path(c_file).stem}.dll'))\n\n"""
             python_wrapper_code += f"_lib.{func_name}.restype = {ret_type_py}\n"
         python_wrapper_code += f"def {func_name}({', '.join([arg.name for arg in args_py if not arg.returns])}):\n"
         if docstring:
-            python_wrapper_code += f"    r'''{docstring.strip()[2:-2]}\n    '''\n"
+            python_wrapper_code += f"    r'''{docstring.strip()[2:-2]}'''\n"
 
         for arg in [arg for arg in args_py if arg.returns and arg.dims]:
             python_wrapper_code += f"    {arg.name} = {arg.npobj}\n"
@@ -172,11 +174,12 @@ def compile():
         file.unlink()
 
     for c_file in c_files:
-        # replace double with float
+        # hack to replace double with float to test precision
         # c_file.write_text(c_file.read_text().replace("double", "float"))
         c_file.write_text(c_file.read_text().replace("float", "double"))
         generate_files(c_file)
 
+    # Tinycc
     # with dll_exported_source(c_dir) as exported_c_dir:
     #    for c_file in exported_c_dir.rglob("*.c"):
     #        subprocess.call(
@@ -189,21 +192,33 @@ def compile():
     #                f"{c_file}",
     #            ]
     #        )
+
+    # Cygwin
+    # for c_file in c_files:
+    #    subprocess.call(
+    #        [
+    #            rf"{cygwin_dir}\..\..\cygwin-portable.cmd",
+    #            rf'cd "{gcc_dir}"; gcc -m64 -shared -o {c_file.stem}.dll "{c_file}"',
+    #        ]
+    #    )
+    # shutil.copy2(f"{cygwin_dir}/cygwin1.dll", gcc_dir / "cygwin1.dll")
+
+    # W64devkit
+    os.environ["PATH"] = f"{w64devkit_path.parent};{os.environ['PATH']}"
     for c_file in c_files:
         subprocess.call(
             [
-                rf"{CYGWIN_PATH}\..\..\cygwin-portable.cmd",
-                rf'cd "{gcc_dir}"; gcc -m64 -shared -o {c_file.stem}.dll "{c_file}"',
+                rf"{w64devkit_path}",
+                "-c",
+                rf'gcc "-I{gcc_dir}" -m64 -shared -o "{gcc_dir / (c_file.stem+".dll")}" "{c_file}"',
             ]
         )
-
-    shutil.copy2(f"{CYGWIN_PATH}/cygwin1.dll", gcc_dir / "cygwin1.dll")
 
     Path(py_dir / "__init__.py").write_text(
         "\n".join(
             [
                 "import ctypes as _ctypes",
-                "_cygwin_dll = _ctypes.CDLL(__file__+'/../gcc/cygwin1.dll')",
+                # "_cygwin_dll = _ctypes.CDLL(__file__+'/../gcc/cygwin1.dll')",
             ]
             + [
                 rf"from . import {i.stem}"
@@ -213,6 +228,16 @@ def compile():
         )
     )
 
+    # if not all c files have dll files, delete gcc directory and all python files not named __init__.py
+    if len(list(gcc_dir.glob("*.dll"))) != len(c_files):
+        shutil.rmtree(gcc_dir)
+        for file in py_dir.glob("*.py"):
+            if file.stem != "__init__":
+                file.unlink()
+
+        return False
+    
+    return True
 
 if __name__ == "__main__":
     compile()

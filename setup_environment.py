@@ -16,9 +16,12 @@ current_script_path = Path(__file__).resolve()
 parent_dir = current_script_path.parent
 bin_dir = parent_dir / "bin"
 bin_dir.mkdir(exist_ok=True)
+
+s7ip_dir = bin_dir / "7z"
 cygwin_dir = bin_dir / "cygwin"
 python_dir = bin_dir / "python"
-s7ip_dir = bin_dir / "7z"
+tcc_dir = bin_dir / "tcc"
+w64devkit_dir = bin_dir / "w64devkit"
 
 
 def install_winpython():
@@ -29,16 +32,13 @@ def install_winpython():
     except (FileNotFoundError, subprocess.CalledProcessError):
         print("Python not found, proceeding with installation.")
 
-    # Download WinPython installer to a temporary location
     winpython_installer_url = "https://github.com/winpython/winpython/releases/download/6.4.20230625final/Winpython64-3.11.4.0dot.exe"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         winpython_installer_path = Path(tmpdir) / Path(winpython_installer_url).name
         urlretrieve(winpython_installer_url, winpython_installer_path)
 
-        # Extract the 7z archive to a temp location
         with tempfile.TemporaryDirectory() as extract_temp_dir:
-            # Run the 7z.exe to extract the WinPython installer
             subprocess.run(
                 [
                     str(s7ip_dir / "7z.exe"),
@@ -48,7 +48,6 @@ def install_winpython():
                 ]
             )
 
-            # Find the correct directory to extract from, assuming it matches the WPy64*/python*.amd64 pattern
             for root, dirs, files in os.walk(extract_temp_dir):
                 if "WPy64" in root and any(
                     "python" in d and "amd64" in d for d in dirs
@@ -59,27 +58,31 @@ def install_winpython():
                     )
                     break
 
-            # Copy extracted Python files to `python_dir`
             shutil.copytree(python_installation_dir, python_dir)
 
-        # Create a virtual environment in `python_dir / venv`
-        venv_dir = parent_dir / "venv"
-        subprocess.run([str(python_dir / "python.exe"), "-m", "venv", str(venv_dir)])
 
-        # Install requirements via pip in the created virtual environment
-        requirements_file = (
-            parent_dir / "requirements.txt"
-        )  # Assuming requirements.txt is in the same folder as the script
-        subprocess.run(
-            [
-                str(venv_dir / "Scripts" / "python.exe"),
-                "-m",
-                "pip",
-                "install",
-                "-r",
-                str(requirements_file),
-            ]
-        )
+def setup_venv():
+    # Decide which Python executable to use
+    try:
+        subprocess.check_output([str(python_dir / "python.exe"), "--help"])
+        python_executable = str(python_dir / "python.exe")
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        python_executable = sys.executable
+
+    venv_dir = parent_dir / "venv"
+    subprocess.run([python_executable, "-m", "venv", str(venv_dir)])
+
+    requirements_file = parent_dir / "requirements.txt"
+    subprocess.run(
+        [
+            str(venv_dir / "Scripts" / "python.exe"),
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            str(requirements_file),
+        ]
+    )
 
 
 def install_cygwin():
@@ -93,6 +96,8 @@ def install_cygwin():
             return
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
+
+    print("Cygwin not found, proceeding with installation.")
 
     # Download Cygwin portable installer
     cygwin_installer_url = "https://raw.githubusercontent.com/vegardit/cygwin-portable-installer/master/cygwin-portable-installer.cmd"
@@ -135,17 +140,19 @@ def install_cygwin():
 
 
 def install_tcc():
-    tcc_dir = bin_dir / "tcc"
-
     # Check if TCC is already installed
     try:
-        subprocess.check_output(
-            [str(tcc_dir / "tcc.exe"), "-h"], stderr=subprocess.STDOUT
-        )
-        print("TCC already installed, skipping installation.")
-        return
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("TCC not found, proceeding with installation.")
+        if "Tiny C Compiler" in subprocess.run(
+            [str(tcc_dir / "tcc.exe"), "-h"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        ).stdout.decode("utf-8"):
+            print("TCC already installed, skipping installation.")
+            return
+    except FileNotFoundError:
+        pass
+
+    print("TCC not found, proceeding with installation.")
 
     # Download TCC ZIP to a temporary location
     tcc_zip_url = (
@@ -162,8 +169,43 @@ def install_tcc():
         )
 
 
-# Now you can call install_winpython to do the installation
+def install_w64devkit():
+    try:
+        if "Usage: gcc" in subprocess.check_output(
+            [str(w64devkit_dir / "bin" / "gcc.exe"), "--help"],
+            stderr=subprocess.STDOUT,
+        ).decode("utf-8"):
+            print("w64devkit already installed, skipping installation.")
+            return
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    print("w64devkit not found, proceeding with installation.")
+
+    # Download w64devkit ZIP to a temporary location
+    w64devkit_zip_url = "https://github.com/skeeto/w64devkit/releases/download/v1.20.0/w64devkit-1.20.0.zip"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        w64devkit_zip_path = Path(tmpdir) / Path(w64devkit_zip_url).name
+        urlretrieve(w64devkit_zip_url, w64devkit_zip_path)
+
+        # Extract w64devkit ZIP to `w64devkit_dir`
+        subprocess.run(
+            [
+                str(s7ip_dir / "7z.exe"),
+                "x",
+                str(w64devkit_zip_path),
+                f"-o{w64devkit_dir.parent}",
+            ]
+        )
+
+
+# Now you can install all dependencies for this project
 if __name__ == "__main__":
-    install_winpython()
-    install_cygwin()
-    install_tcc()
+    
+    # install_winpython()
+    # install_cygwin()
+    # install_tcc()
+
+    setup_venv()
+    install_w64devkit()
