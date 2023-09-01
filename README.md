@@ -1,2 +1,2 @@
-# heliostat_calculations
- A repo to help with heliostat calculations and c functionality
+# heliostat-prototype
+ A repo to assist with heliostat calculations and c functionality
